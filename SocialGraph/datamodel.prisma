@@ -1,0 +1,31 @@
+type User {
+  id: ID! @id
+  name: String! 
+  age: Int
+  email: String! @unique 
+  posts: [Post!]!
+  follows: [User!]!   @relation(name: "Followers")
+  followers: [User!]!  @relation(name: "Followers")
+}
+
+type Post {
+  id: ID!  @id @unique
+  title: String!
+  published: Boolean!
+  author: User!
+}
+ 
+ 
+type Config {
+  id: ID!  @id @unique
+  IP: String!
+  AllowedCallPerMinute: Int! 
+}
+
+
+type Calls {
+    id: ID! @id @unique
+    IP: String!
+    Endpoint: String!
+    TimeStamp: Int! 
+  }

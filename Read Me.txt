@@ -1,0 +1,13 @@
+Prisma was used to accelerate the development time. 
+
+Docker is needed to run the database and also the prisma endpoint
+
+Steps to run locally
+
+cd into newSocialGraphProblem
+RUN npm i .
+RUN docker-compose up -d
+RUN prisma deploy
+
+
+The GraphQL Endpoint will start running on http://localhost:4466/

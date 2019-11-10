@@ -1,0 +1,58 @@
+Prisma was used to accelerate the development time. 
+
+Docker is needed to run the database and also the prisma endpoint
+
+Steps to run locally
+
+cd into newSocialGraphProblem2/
+RUN npm i .
+RUN docker-compose up -d
+RUN prisma deploy
+RUN node src/index.js
+
+
+The GraphQL Endpoint will start running on http://localhost:4000/
+
+Only One Endpoint has rate limiting implemented on it since it's just to express the concept of how it could be done
+The endpoint is getUserByEmailThrottled
+
+To Test, create a user using the mutaton createCustomUsers for example:
+
+mutation{
+  
+  createCustomUsers(
+		name: "Oyinlola Israel!"
+		age: 29
+		email: "o@i.com"
+  ){
+    id
+    name
+    age
+  }
+    
+  
+}
+
+
+
+With the email that was created above, clicking on a endpoint that has rate limiting on it
+# Write your query or mutation here
+# Write your query or mutation here
+{
+  getUserByEmailThrottled(
+    reqEmail:"o@i.com"
+  )
+  { 
+    email
+    id
+    name
+    
+  }
+
+}
+
+
+The console logs, and the response header will be showing the neccessary information
+
+Thank you. 
+
