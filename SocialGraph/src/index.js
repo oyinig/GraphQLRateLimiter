@@ -1,7 +1,7 @@
 const { prisma } = require("./../generated/prisma-client")
 const {forwardTo} = require("prisma-binding")
 const { ApolloServer, gql } = require("apollo-server");
-const ipaddr = require('ipaddr.js');
+
 
 
 
@@ -39,11 +39,12 @@ type Calls {
   }
 
 
-   
+    
 type Query{
-    getUserByEmailThrottled(reqEmail:String):User!
+    getUserByEmailThrottled(reqEmail:String):User
 	getUsersFollowersThrottled(reqEmail:String):User
-	getUserFollowingThrottled(reqEmail:String):User
+    getUserFollowingThrottled(reqEmail:String):User
+    getconfig(reqIP:String):Config
      
 }
 scalar DateTime
@@ -58,37 +59,25 @@ type Mutation{
 const resolvers ={
     Query:{
          getUserByEmailThrottled : async (parent, {reqEmail}, context) =>{
-        
-            const IP = context.ip
-            const Endpoint = "getUserByEmailThrottled"
-            const TimeStamp = parseInt(Date.now()/1000) // Converts millisecond to seconds
-            const pastSeconds = parseInt(new Date().getSeconds()); //Just to make sure it ends up as an integer
-            const timeToRollOver = TimeStamp+(60-pastSeconds)
-            const resetTime = new Date(timeToRollOver*1000)
+             
+            var IP = context.ip
+            var  Endpoint = "getUserByEmailThrottled"
+            var TimeStamp = parseInt(Date.now()/1000) // Converts millisecond to seconds
+            if(context.db ){
+                await context.db.createCalls({ IP , Endpoint, TimeStamp  })  
+                return await context.db.user({email: reqEmail} )
+            }
+        },
 
-            const aggrCount = await context.db.callsesConnection({ where: {
-                AND: [{
-                    TimeStamp_gte: TimeStamp - pastSeconds
-                }, {
-                    TimeStamp_lte: TimeStamp
-                }] }}).aggregate().count()
- 
-                    const callsLeft  = 100 - aggrCount;
-                    if (callsLeft <= 0 ) {
-                        context.responseHeader.setHeader('Callsleft', '0');
-                        context.responseHeader.setHeader('ResetTime', resetTime);
-                        return {};
-                    }else{
-                        context.responseHeader.setHeader('Callsleft', callsLeft);
-                        context.responseHeader.setHeader('ResetTime', resetTime);
-
-                    }
-                    console.log("Used Calls: ", aggrCount,"Available Calls: ", callsLeft, "Reset Time: ",  resetTime, "TimeToReset: ",
-                    timeToRollOver, "Seconds Spent", pastSeconds, "CurrentTimeStamp", TimeStamp);
-  
-            await context.db.createCalls({ IP , Endpoint, TimeStamp  }) 
-            //console.log(await context.db.user( {email: reqEmail} ))
-            return await context.db.user({email: reqEmail} )
+        getconfig : async (parent, {reqIP}, context) =>{
+             
+            var IP = context.ip
+            var  Endpoint = "getconfig"
+            var TimeStamp = parseInt(Date.now()/1000) // Converts millisecond to seconds
+            if(context.db ){
+                await context.db.createCalls({ IP , Endpoint, TimeStamp  })  
+                return await context.db.Config({IP: reqIP} )
+            }
         },
        
 
@@ -96,13 +85,24 @@ const resolvers ={
     },
 
     Mutation :{
-        createConfig :(parent, { IP, AllowedCallPerMinute }, context) => {
-            
-            return context.db.createConfig({ IP, AllowedCallPerMinute })
+        createConfig : async(parent, { IP, AllowedCallPerMinute }, context) => {
+            var IP = context.ip
+            var Endpoint = "createConfig"
+            var TimeStamp = parseInt(Date.now()/1000) // Converts millisecond to seconds
+            if(context.db){
+                await context.db.createCalls({ IP , Endpoint, TimeStamp  }) 
+                return context.db.createConfig({ IP, AllowedCallPerMinute })
+            }
         },
 
-        createCustomUsers: (parent, {name, age, email}, context) => {
-            return context.db.createUser({name, age, email})
+        createCustomUsers: async(parent, {name, age, email}, context) => {
+            var IP = context.ip
+            var Endpoint = "createCustomUsers"
+            var TimeStamp = parseInt(Date.now()/1000) // Converts millisecond to seconds
+            if(context.db){
+                await context.db.createCalls({ IP , Endpoint, TimeStamp  }) 
+                return await context.db.createUser({name, age, email})
+            }
         },
         
  
@@ -115,11 +115,37 @@ const server = new ApolloServer({
     typeDefs, 
     resolvers,
     
-    context: ({ req, res }) => {
+    context: async ({ req, res }) => {
         const headers = req.headers
         const ip = req.ip 
         const db = prisma
-        const responseHeader = res
+        const responseHeader = res 
+        const TimeStamp = parseInt(Date.now()/1000) // Converts millisecond to seconds
+        const pastSeconds = parseInt(new Date().getSeconds()); //Just to make sure it ends up as an integer
+        const timeToRollOver = TimeStamp+(60-pastSeconds)
+        const resetTime = new Date(timeToRollOver*1000)
+        console.log(TimeStamp - pastSeconds, TimeStamp, pastSeconds)
+        const aggrCount = await db.callsesConnection({ where: {
+            AND: [{
+                TimeStamp_gte: TimeStamp - pastSeconds
+            }, {
+                TimeStamp_lte: TimeStamp
+            }] }}).aggregate().count()
+        const AvailableCalls = await db.configs({where: {IP: req.ip } });
+        console.log("AvailableCalls", AvailableCalls[0].AllowedCallPerMinute);
+        const callsLeft  = AvailableCalls[0].AllowedCallPerMinute - aggrCount;
+        if (callsLeft <= 0 ) {
+            res.setHeader('Callsleft', '0');
+            res.setHeader('ResetTime', resetTime);
+            return {};
+        }else{
+            res.setHeader('Callsleft', callsLeft);
+            res.setHeader('ResetTime', resetTime);
+
+        }
+        console.log("Used Calls: ", aggrCount,"Available Calls: ", callsLeft, "Reset Time: ",  resetTime, "TimeToReset: ",
+        timeToRollOver, "Seconds Spent", pastSeconds, "CurrentTimeStamp", TimeStamp);
+
         //console.log(responseHeader);
         return {
           headers,
