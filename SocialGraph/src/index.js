@@ -26,7 +26,7 @@ type Post {
 
 type Config {
   id: ID! 
-  IP: String!
+  IP: String!  @unique 
   AllowedCallPerMinute: Int! 
 }
 
@@ -76,7 +76,7 @@ const resolvers ={
             var TimeStamp = parseInt(Date.now()/1000) // Converts millisecond to seconds
             if(context.db ){
                 await context.db.createCalls({ IP , Endpoint, TimeStamp  })  
-                return await context.db.Config({IP: reqIP} )
+                return await context.db.configs({where: {IP: reqIP}})
             }
         },
        
