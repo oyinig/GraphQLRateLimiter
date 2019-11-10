@@ -26,7 +26,7 @@ type Post {
 
 type Config {
   id: ID! 
-  IP: String!  @unique 
+  IP: String!  
   AllowedCallPerMinute: Int! 
 }
 
